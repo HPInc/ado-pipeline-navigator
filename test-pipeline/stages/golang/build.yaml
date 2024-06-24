@@ -1,0 +1,6 @@
+#Test
+stage: build
+extends:
+  template: ../templates/build.yaml
+    parameters:
+      env: ${{ parameters.env }}

@@ -1,0 +1,98 @@
+{
+  "name": "ado-pipeline-navigator",
+  "displayName": "ADO Pipeline Navigator",
+  "description": "Navigate ADO template with Ctrl+click",
+  "version": "1.1.0",
+  "publisher": "RenyPaul",
+  "icon": "icon.png",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/renypaul/ado-pipeline-navigator.git"
+  },
+  "engines": {
+    "vscode": ">=1.63.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onLanguage:azure-pipelines",
+    "onLanguage:yaml",
+    "onLanguage:markdown",
+    "onLanguage:plaintext"
+  ],
+  "main": "./extension-min.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "ado-pipeline-navigator.replacementStringsCommand",
+        "title": "ADO Pipeline Navigator: Replacement Strings"
+      },
+      {
+        "command": "ado-pipeline-navigator.featureTogglesCommand",
+        "title": "ADO Pipeline Navigator: Feature Toggles"
+      }
+    ],
+    "configuration": {
+      "title": "ADO Pipeline Navigator",
+      "properties": {
+        "ado-pipeline-navigator.replacementStrings": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "object",
+            "properties": {
+              "find": {
+                "type": "string"
+              },
+              "replace": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "find",
+              "replace"
+            ]
+          },
+          "description": "Array of replacement strings"
+        },
+        "ado-pipeline-navigator.featureToggles": {
+          "type": "object",
+          "default": {},
+          "properties": {
+            "ReplaceStrings": {
+              "type": "boolean",
+              "default": true,
+              "description": "Enable/disable string replacements feature."
+            },
+            "InternetFetch": {
+              "type": "boolean",
+              "default": true,
+              "description": "Enable/disable internet fetch feature."
+            }
+          },
+          "description": "Controls the feature toggles for the ADO Pipeline Navigator extension."
+        }
+      },
+      "resources": [
+        {
+          "type": "image",
+          "path": "navigate.png"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "compile": "webpack --mode production"
+  },
+  "devDependencies": {
+    "vscode": "^1.1.34",
+    "webpack-cli": "^4.10.0"
+  },
+  "dependencies": {
+    "axios": "^0.27.2",
+    "cheerio": "^1.0.0-rc.12",
+    "js-yaml": "^4.0.0"
+  }
+}

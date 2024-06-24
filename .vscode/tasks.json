@@ -1,0 +1,11 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "copyExtension",
+        "type": "shell",
+        "command": "cp -f ${workspaceFolder}/extension.js ${workspaceFolder}/extension-min.js",
+        "problemMatcher": []
+      }
+    ]
+  }

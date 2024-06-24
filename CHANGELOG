@@ -1,0 +1,19 @@
+v1.0.2
+- Initial version with Ctrl+click & F12 navigation
+
+v1.0.3
+- Support for azure-pipelines
+- Bug fixes
+
+v1.1.0
+- Breaking change. 
+  - `adopipeline.pathReplacements` property changed to `ado-pipeline-navigator.replacementStrings`
+  - adopipeline in Command Palette changed to ADO Pipeline Navigator
+- Settings Added
+  - ado-pipeline-navigator.replacementStrings => Array of replacement strings
+  - ado-pipeline-navigator.featureToggles => Features to enable or diasble
+  - ado-pipeline-navigator.quickReplaceStringsCount => Number of replacement string to loop from Command Palette Replace String
+- Support for fetching task documentation from internet on hover
+- Support for navigation to taks documentation url on Ctrl+click or F12 of tasks
+- Support for showing the contents of keywords like parameters,jobs,stages etc(configurable in settings) on hover over templates/file
+- Bug fixes

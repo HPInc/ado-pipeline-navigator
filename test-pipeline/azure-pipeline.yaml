@@ -1,0 +1,22 @@
+parameters:
+- name: language
+  type: string
+  default: java
+- name: env
+  type: string
+  default: dev
+
+
+stages:
+- template: test-pipeline/stages/${{ parameters.language }}/build.yaml
+
+- template: test-pipeline/stages/${{ parameters.language }}/test.yaml
+- template: test-pipeline/stages/deploy.yaml
+  parameters:
+    env: ${{ parameters.env }}
+
+- task: PublishPipelineArtifact@1
+  inputs:
+    targetPath: '$(Build.SourcesDirectory)/test-pipeline'
+    artifact: 'test-pipeline'
+    publishLocation: 'pipeline'
