@@ -2,7 +2,7 @@
   "name": "ado-pipeline-navigator",
   "displayName": "ADO Pipeline Navigator",
   "description": "Navigate ADO template with Ctrl+click",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "publisher": "RenyPaul",
   "icon": "icon.png",
   "license": "MIT",

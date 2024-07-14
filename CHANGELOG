@@ -17,3 +17,12 @@ v1.1.0
 - Support for navigation to taks documentation url on Ctrl+click or F12 of tasks
 - Support for showing the contents of keywords like parameters,jobs,stages etc(configurable in settings) on hover over templates/file
 - Bug fixes
+v1.1.1
+- Support a case where there are multiple folder in the workspace and the target is in one of it.
+  workspace
+    - templates
+      - golang
+        - build.yaml
+    - myapp
+      - pipeline.yaml has a reference to /templates/golang/build.yaml
+

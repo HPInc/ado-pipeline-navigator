@@ -99,10 +99,22 @@ class AdoPipelineNavigator {
             fileAbsPath = path.join(rootPath, filePath);
             if (fs.existsSync(fileAbsPath)) {
                 found = true;
-            } else {
+            }
+            if (!found) {
                 for (let workspaceFolder of vscode.workspace.workspaceFolders) {
                     fileAbsPath = path.join(workspaceFolder.uri.fsPath, filePath);
                     if (fs.existsSync(fileAbsPath)) {
+                        found = true;
+                        break;
+                    }
+                }
+            }
+            if (!found) {
+                for (let workspaceFolder of vscode.workspace.workspaceFolders) {
+                    let files = fs.readdirSync(workspaceFolder.uri.fsPath);
+                    let dirs = files.filter(file => fs.statSync(path.join(workspaceFolder.uri.fsPath, file)).isDirectory() && fs.existsSync(path.join(workspaceFolder.uri.fsPath, file, filePath)));
+                    if (dirs.length > 0) {
+                        fileAbsPath = path.join(workspaceFolder.uri.fsPath, dirs[0], filePath);
                         found = true;
                         break;
                     }
@@ -331,6 +343,8 @@ async function featureTogglesCommand(adoPipelineNavigator) {
 }
 
 function activate(context) {
+    console.log('Congratulations, your extension "ado-pipeline-navigator" is now active!');
+    vscode.window.showInformationMessage('Extension "ado-pipeline-navigator" is now active!');
     let adoPipelineNavigator = new AdoPipelineNavigator();
 
     let languages = ['azure-pipelines', 'yaml', 'markdown', 'plaintext']
