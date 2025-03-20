@@ -1,3 +1,7 @@
+v1.2.0
+- Updated npm pacakges
+- Updated build configuration
+
 v1.0.2
 - Initial version with Ctrl+click & F12 navigation
 
@@ -25,4 +29,3 @@ v1.1.1
         - build.yaml
     - myapp
       - pipeline.yaml has a reference to /templates/golang/build.yaml
-

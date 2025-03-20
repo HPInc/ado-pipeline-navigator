@@ -1,28 +1,13 @@
 {
-  "name": "ado-pipeline-navigator",
-  "displayName": "ADO Pipeline Navigator",
-  "description": "Navigate ADO template with Ctrl+click",
-  "version": "1.1.1",
-  "publisher": "RenyPaul",
-  "icon": "icon.png",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/renypaul/ado-pipeline-navigator.git"
-  },
-  "engines": {
-    "vscode": ">=1.63.0"
-  },
-  "categories": [
-    "Other"
-  ],
   "activationEvents": [
     "onLanguage:azure-pipelines",
     "onLanguage:yaml",
     "onLanguage:markdown",
     "onLanguage:plaintext"
   ],
-  "main": "./extension-min.js",
+  "categories": [
+    "Other"
+  ],
   "contributes": {
     "commands": [
       {
@@ -35,13 +20,28 @@
       }
     ],
     "configuration": {
-      "title": "ADO Pipeline Navigator",
       "properties": {
+        "ado-pipeline-navigator.featureToggles": {
+          "default": {},
+          "description": "Controls the feature toggles for the ADO Pipeline Navigator extension.",
+          "properties": {
+            "InternetFetch": {
+              "default": true,
+              "description": "Enable/disable internet fetch feature.",
+              "type": "boolean"
+            },
+            "ReplaceStrings": {
+              "default": true,
+              "description": "Enable/disable string replacements feature.",
+              "type": "boolean"
+            }
+          },
+          "type": "object"
+        },
         "ado-pipeline-navigator.replacementStrings": {
-          "type": "array",
           "default": [],
+          "description": "Array of replacement strings",
           "items": {
-            "type": "object",
             "properties": {
               "find": {
                 "type": "string"
@@ -53,46 +53,46 @@
             "required": [
               "find",
               "replace"
-            ]
+            ],
+            "type": "object"
           },
-          "description": "Array of replacement strings"
-        },
-        "ado-pipeline-navigator.featureToggles": {
-          "type": "object",
-          "default": {},
-          "properties": {
-            "ReplaceStrings": {
-              "type": "boolean",
-              "default": true,
-              "description": "Enable/disable string replacements feature."
-            },
-            "InternetFetch": {
-              "type": "boolean",
-              "default": true,
-              "description": "Enable/disable internet fetch feature."
-            }
-          },
-          "description": "Controls the feature toggles for the ADO Pipeline Navigator extension."
+          "type": "array"
         }
       },
       "resources": [
         {
-          "type": "image",
-          "path": "navigate.png"
+          "path": "navigate.png",
+          "type": "image"
         }
-      ]
+      ],
+      "title": "ADO Pipeline Navigator"
     }
+  },
+  "dependencies": {
+    "axios": "^1.8.4",
+    "cheerio": "^1.0.0-rc.12",
+    "js-yaml": "^4.0.0"
+  },
+  "description": "Navigate ADO template with Ctrl+click",
+  "devDependencies": {
+    "@types/vscode": "^1.64.0",
+    "webpack-cli": "^4.10.0"
+  },
+  "displayName": "ADO Pipeline Navigator",
+  "engines": {
+    "vscode": ">=1.63.0"
+  },
+  "icon": "icon.png",
+  "license": "MIT",
+  "main": "./extension-min.js",
+  "name": "ado-pipeline-navigator",
+  "publisher": "RenyPaul",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/renypaul/ado-pipeline-navigator.git"
   },
   "scripts": {
     "compile": "webpack --mode production"
   },
-  "devDependencies": {
-    "vscode": "^1.1.34",
-    "webpack-cli": "^4.10.0"
-  },
-  "dependencies": {
-    "axios": "^0.27.2",
-    "cheerio": "^1.0.0-rc.12",
-    "js-yaml": "^4.0.0"
-  }
+  "version": "1.1.1"
 }
