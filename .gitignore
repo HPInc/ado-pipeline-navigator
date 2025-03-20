@@ -1,6 +1,4 @@
 /node_modules
 /dist
 *.vsix
-/extension-min.js
-/extension-min.js.LICENSE.txt
 /temp

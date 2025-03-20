@@ -2,7 +2,7 @@ const vscode = require('vscode');
 const path = require('path');
 const fs = require('fs');
 const console = require('console');
-const yaml = require('js-yaml')
+const yaml = require('js-yaml');
 const axios = require('axios');
 const cheerio = require('cheerio');
 
@@ -13,16 +13,16 @@ let decorationType = vscode.window.createTextEditorDecorationType({
     cursor: 'pointer',
     color: '#FFD580',
     after: {
-        fontWeight: 'bold'
+        fontWeight: 'bold',
     },
     light: {
         color: 'darkorange',
-        borderColor: 'darkblue'
+        borderColor: 'darkblue',
     },
     dark: {
         color: 'lightorange',
-        borderColor: 'lightblue'
-    }
+        borderColor: 'lightblue',
+    },
 });
 
 class AdoPipelineNavigator {
@@ -46,38 +46,51 @@ class AdoPipelineNavigator {
         }
 
         if (updated) {
-            vscode.workspace.getConfiguration('ado-pipeline-navigator').update('featureToggles', featureToggles, vscode.ConfigurationTarget.Global);
+            vscode.workspace
+                .getConfiguration('ado-pipeline-navigator')
+                .update('featureToggles', featureToggles, vscode.ConfigurationTarget.Global);
         }
         this.internetFetch = featureToggles['InternetFetch'];
         this.replaceStrings = featureToggles['ReplaceStrings'];
         let config = vscode.workspace.getConfiguration('ado-pipeline-navigator');
-        this.keywordsToDisplayOnHover = config.get('keywordsToDisplayOnHover')
+        this.keywordsToDisplayOnHover = config.get('keywordsToDisplayOnHover');
         if (this.keywordsToDisplayOnHover === undefined) {
-            this.keywordsToDisplayOnHover =  ['parameters', 'stages', 'jobs', 'steps'];
-            vscode.workspace.getConfiguration('ado-pipeline-navigator').update('keywordsToDisplayOnHover', this.keywordsToDisplayOnHover, vscode.ConfigurationTarget.Global);
+            this.keywordsToDisplayOnHover = ['parameters', 'stages', 'jobs', 'steps'];
+            vscode.workspace
+                .getConfiguration('ado-pipeline-navigator')
+                .update('keywordsToDisplayOnHover', this.keywordsToDisplayOnHover, vscode.ConfigurationTarget.Global);
         }
 
-        this.quickReplaceStringsCount = vscode.workspace.getConfiguration('ado-pipeline-navigator').get('quickReplaceStringsCount');
+        this.quickReplaceStringsCount = vscode.workspace
+            .getConfiguration('ado-pipeline-navigator')
+            .get('quickReplaceStringsCount');
         if (this.quickReplaceStringsCount === undefined) {
             this.quickReplaceStringsCount = 1;
-            vscode.workspace.getConfiguration('ado-pipeline-navigator').update('quickReplaceStringsCount', this.quickReplaceStringsCount, vscode.ConfigurationTarget.Global);
+            vscode.workspace
+                .getConfiguration('ado-pipeline-navigator')
+                .update('quickReplaceStringsCount', this.quickReplaceStringsCount, vscode.ConfigurationTarget.Global);
         }
 
         // Backward compatibility for the replacementStrings
         this.replacementStrings = config.get('replacementStrings');
-        if (this.replacementStrings === undefined) {
+        if (this.replacementStrings === undefined || this.replacementStrings.length === 0) {
+            this.replacementStrings = [];
             let pathReplacements = vscode.workspace.getConfiguration('adopipeline').get('pathReplacements');
             if (pathReplacements !== undefined) {
-                vscode.workspace.getConfiguration('ado-pipeline-navigator').update('replacementStrings', pathReplacements, vscode.ConfigurationTarget.Global);
+                vscode.workspace
+                    .getConfiguration('ado-pipeline-navigator')
+                    .update('replacementStrings', pathReplacements, vscode.ConfigurationTarget.Global);
                 this.replacementStrings = pathReplacements;
             } else {
-                this.replacementStrings.push({ find: '', replace: '' })
+                this.replacementStrings.push({ find: '', replace: '' });
             }
         }
     }
 
     getFilePath(document, match) {
-        let rootPath = vscode.workspace.workspaceFolders ? vscode.workspace.getWorkspaceFolder(document.uri).uri.fsPath : '';
+        let rootPath = vscode.workspace.workspaceFolders
+            ? vscode.workspace.getWorkspaceFolder(document.uri).uri.fsPath
+            : '';
         let fileAbsPath;
         let filePath = match[3].trim();
 
@@ -112,7 +125,11 @@ class AdoPipelineNavigator {
             if (!found) {
                 for (let workspaceFolder of vscode.workspace.workspaceFolders) {
                     let files = fs.readdirSync(workspaceFolder.uri.fsPath);
-                    let dirs = files.filter(file => fs.statSync(path.join(workspaceFolder.uri.fsPath, file)).isDirectory() && fs.existsSync(path.join(workspaceFolder.uri.fsPath, file, filePath)));
+                    let dirs = files.filter(
+                        (file) =>
+                            fs.statSync(path.join(workspaceFolder.uri.fsPath, file)).isDirectory() &&
+                            fs.existsSync(path.join(workspaceFolder.uri.fsPath, file, filePath)),
+                    );
                     if (dirs.length > 0) {
                         fileAbsPath = path.join(workspaceFolder.uri.fsPath, dirs[0], filePath);
                         found = true;
@@ -126,7 +143,7 @@ class AdoPipelineNavigator {
     }
 
     updateFilePathFromConfig(filePath) {
-        this.replacementStrings.forEach(replacement => {
+        this.replacementStrings.forEach((replacement) => {
             filePath = filePath.replace(replacement.find, replacement.replace);
         });
 
@@ -135,9 +152,16 @@ class AdoPipelineNavigator {
 
     getTaskUrl(task) {
         if (task.includes('@')) {
-            let urlFmt = 'https://learn.microsoft.com/en-us/azure/devops/pipelines/tasks/reference/{0}?view=azure-devops';
+            let urlFmt =
+                'https://learn.microsoft.com/en-us/azure/devops/pipelines/tasks/reference/{0}?view=azure-devops';
             let version = task.substring(task.indexOf('@') + 1);
-            let taskName = task.substring(0, task.indexOf('@')).replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase() + '-v' + version;
+            let taskName =
+                task
+                    .substring(0, task.indexOf('@'))
+                    .replace(/([a-z])([A-Z])/g, '$1-$2')
+                    .toLowerCase() +
+                '-v' +
+                version;
             return urlFmt.replace('{0}', taskName);
         }
         return undefined;
@@ -146,9 +170,9 @@ class AdoPipelineNavigator {
     async getTaskDoc(url) {
         const response = await axios.get(url);
         const $ = cheerio.load(response.data);
-        const syntaxSection = $('#syntax')
+        const syntaxSection = $('#syntax');
         const usage = syntaxSection.nextAll('div').find('pre > code').first().text().trim();
-        return usage
+        return usage;
     }
 
     // Adding the links and decorations for the matched text with underscore and text formatting
@@ -167,23 +191,28 @@ class AdoPipelineNavigator {
                 continue;
             }
 
-            let decorate = false
-            let url = undefined
+            let decorate = false;
+            let url = undefined;
             switch (match[2].trim()) {
                 case 'task':
-                    decorate = true
-                    url = this.getTaskUrl(match[3].trim())
+                    decorate = true;
+                    url = this.getTaskUrl(match[3].trim());
                     break;
                 case 'file':
                 case 'template':
-                    decorate = true
+                    decorate = true;
                     break;
                 default:
                     break;
             }
 
             if (decorate) {
-                let range = new vscode.Range(line, match.index + match[1].length, line, match.index + match[0].trimEnd().length);
+                let range = new vscode.Range(
+                    line,
+                    match.index + match[1].length,
+                    line,
+                    match.index + match[0].trimEnd().length,
+                );
                 if (url !== undefined) {
                     const link = new vscode.DocumentLink(range, vscode.Uri.parse(url));
                     links.push(link);
@@ -211,7 +240,7 @@ class AdoPipelineNavigator {
 
         switch (match[2].trim()) {
             case 'task':
-                let url = this.getTaskUrl(match[3].trim())
+                let url = this.getTaskUrl(match[3].trim());
                 if (url !== undefined) {
                     vscode.env.openExternal(vscode.Uri.parse(url));
                 }
@@ -238,10 +267,11 @@ class AdoPipelineNavigator {
         let hoverText = '';
         switch (match[2].trim()) {
             case 'task':
-                let url = this.getTaskUrl(match[3].trim())
+                let url = this.getTaskUrl(match[3].trim());
                 if (url !== undefined) {
                     if (!this.internetFetch) {
-                        hoverText = '`InternetFetch` feature is disabled. Enable it from command palette to fetch task documentation\n\n`ADO Pipeline Navigator: InternetFetch`';
+                        hoverText =
+                            '`InternetFetch` feature is disabled. Enable it from command palette to fetch task documentation\n\n`ADO Pipeline Navigator: InternetFetch`';
                         break;
                     }
                     try {
@@ -263,7 +293,7 @@ class AdoPipelineNavigator {
                     let fileContents = fs.readFileSync(filePath, 'utf8');
                     try {
                         let yamlContents = yaml.load(fileContents);
-                        let displayItems = {}
+                        let displayItems = {};
                         for (let keyword of this.keywordsToDisplayOnHover) {
                             if (Object.keys(yamlContents[keyword] || {}).length > 0) {
                                 displayItems[keyword] = yamlContents[keyword];
@@ -277,7 +307,8 @@ class AdoPipelineNavigator {
                 } else {
                     hoverText += '\n\nFile not found.';
                     if (!this.replaceStrings) {
-                        hoverText += ' `ReplaceStrings` feature is disabled. Enable it from command palette to replace strings in file path\n\n`ADO Pipeline Navigator: ReplaceStrings`';
+                        hoverText +=
+                            ' `ReplaceStrings` feature is disabled. Enable it from command palette to replace strings in file path\n\n`ADO Pipeline Navigator: ReplaceStrings`';
                     }
                 }
                 break;
@@ -300,8 +331,14 @@ async function replacementStringsCommand(adoPipelineNavigator) {
     for (let i = 0; i < maxIterations; i++) {
         let replacement = replacementStrings[i];
 
-        let find = await vscode.window.showInputBox({ prompt: 'Enter the string to find for replacement', value: replacement.find });
-        let replace = await vscode.window.showInputBox({ prompt: 'Enter the replacement string', value: replacement.replace });
+        let find = await vscode.window.showInputBox({
+            prompt: 'Enter the string to find for replacement',
+            value: replacement.find,
+        });
+        let replace = await vscode.window.showInputBox({
+            prompt: 'Enter the replacement string',
+            value: replacement.replace,
+        });
 
         if (find !== undefined && replace !== undefined) {
             replacement.find = find;
@@ -318,7 +355,7 @@ async function replacementStringsCommand(adoPipelineNavigator) {
 
 function getFeatureTogglesConfig() {
     let config = vscode.workspace.getConfiguration('ado-pipeline-navigator');
-    let featureToggles = config.get('featureToggles') || {'InternetFetch': undefined, 'ReplaceStrings': undefined};
+    let featureToggles = config.get('featureToggles') || { InternetFetch: undefined, ReplaceStrings: undefined };
     return featureToggles;
 }
 
@@ -327,7 +364,7 @@ async function featureTogglesCommand(adoPipelineNavigator) {
     let featureTogglesMap = Object.entries(featureToggles).map(([featureName, isEnabled]) => ({
         label: `${isEnabled ? '✅' : '❌'} ${featureName}`,
         featureName,
-        isEnabled
+        isEnabled,
     }));
 
     const selected = await vscode.window.showQuickPick(featureTogglesMap, {
@@ -338,7 +375,9 @@ async function featureTogglesCommand(adoPipelineNavigator) {
         featureToggles[selected.featureName] = !selected.isEnabled;
         let config = vscode.workspace.getConfiguration('ado-pipeline-navigator');
         await config.update('featureToggles', featureToggles, vscode.ConfigurationTarget.Global);
-        vscode.window.showInformationMessage(`Feature "${selected.featureName}" is now ${featureToggles[selected.featureName] ? 'enabled' : 'disabled'}.`);
+        vscode.window.showInformationMessage(
+            `Feature "${selected.featureName}" is now ${featureToggles[selected.featureName] ? 'enabled' : 'disabled'}.`,
+        );
     }
 }
 
@@ -347,19 +386,33 @@ function activate(context) {
     vscode.window.showInformationMessage('Extension "ado-pipeline-navigator" is now active!');
     let adoPipelineNavigator = new AdoPipelineNavigator();
 
-    let languages = ['azure-pipelines', 'yaml', 'markdown', 'plaintext']
+    let languages = ['azure-pipelines', 'yaml', 'markdown', 'plaintext'];
     for (let language of languages) {
-        context.subscriptions.push(vscode.languages.registerDocumentLinkProvider({ language: language }, adoPipelineNavigator));
-        context.subscriptions.push(vscode.languages.registerDefinitionProvider({ language: language }, adoPipelineNavigator));
-        context.subscriptions.push(vscode.languages.registerHoverProvider({ language: language }, adoPipelineNavigator));
+        context.subscriptions.push(
+            vscode.languages.registerDocumentLinkProvider({ language: language }, adoPipelineNavigator),
+        );
+        context.subscriptions.push(
+            vscode.languages.registerDefinitionProvider({ language: language }, adoPipelineNavigator),
+        );
+        context.subscriptions.push(
+            vscode.languages.registerHoverProvider({ language: language }, adoPipelineNavigator),
+        );
     }
 
-    let commandFunctionMap = { 'replacementStringsCommand': replacementStringsCommand, 'featureTogglesCommand': featureTogglesCommand}
+    let commandFunctionMap = {
+        replacementStringsCommand: replacementStringsCommand,
+        featureTogglesCommand: featureTogglesCommand,
+    };
     for (let command in commandFunctionMap) {
-        context.subscriptions.push(vscode.commands.registerCommand(`ado-pipeline-navigator.${command}`, commandFunctionMap[command].bind(null, adoPipelineNavigator)));
+        context.subscriptions.push(
+            vscode.commands.registerCommand(
+                `ado-pipeline-navigator.${command}`,
+                commandFunctionMap[command].bind(null, adoPipelineNavigator),
+            ),
+        );
     }
 
-    vscode.workspace.onDidChangeConfiguration(event => {
+    vscode.workspace.onDidChangeConfiguration((event) => {
         if (event.affectsConfiguration('ado-pipeline-navigator.replaceStrings')) {
             if (vscode.window.activeTextEditor) {
                 adoPipelineNavigator.provideDocumentLinks(vscode.window.activeTextEditor.document, null);
@@ -374,12 +427,11 @@ function activate(context) {
     });
 }
 
-
 exports.activate = activate;
 
-function deactivate() { }
+function deactivate() {}
 
 module.exports = {
     activate,
-    deactivate
-}
+    deactivate,
+};
