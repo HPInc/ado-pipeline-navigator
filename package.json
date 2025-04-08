@@ -38,6 +38,19 @@
           },
           "type": "object"
         },
+        "ado-pipeline-navigator.keywordsToDisplayOnHover": {
+          "default": null,
+          "description": "Array of keywords to display on hover in the ADO Pipeline Navigator extension.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "ado-pipeline-navigator.quickReplaceStringsCount": {
+          "default": 5,
+          "description": "Number of quick replace strings to display in the ADO Pipeline Navigator extension.",
+          "type": "number"
+        },
         "ado-pipeline-navigator.replacementStrings": {
           "default": [],
           "description": "Array of replacement strings",
@@ -96,5 +109,5 @@
     "build:prod": "webpack --mode production",
     "compile": "webpack --mode production"
   },
-  "version": "1.2.1"
+  "version": "1.2.2"
 }
