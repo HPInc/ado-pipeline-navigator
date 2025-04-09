@@ -99,6 +99,9 @@ class AdoPipelineNavigator {
         }
 
         for (let workspaceFolder of vscode.workspace.workspaceFolders) {
+            if (fs.existsSync(path.join(workspaceFolder.uri.fsPath, filePath))) {
+                return [path.join(workspaceFolder.uri.fsPath, filePath)];
+            }
             let files = fs.readdirSync(workspaceFolder.uri.fsPath);
             let dirs = files.filter(
                 (file) =>
@@ -271,7 +274,7 @@ class AdoPipelineNavigator {
                 let parameters = yaml.dump(displayItems, { indent: 2, noArrayIndent: true });
                 hoverText += `\n\`\`\`yaml\n${parameters}\n\`\`\``;
             } catch (error) {
-                hoverText += '\n\nparameters not found';
+                hoverText += '';
             }
         } else {
             hoverText += '\n\nFile not found.';
