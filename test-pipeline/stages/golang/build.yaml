@@ -1,6 +1,12 @@
-#Test
-stage: build
-extends:
-  template: ../templates/build.yaml
-    parameters:
-      env: ${{ parameters.env }}
+stages:
+- stage: GolangBuild
+  jobs:
+  - job: Build
+    displayName: Build Job
+    pool:
+      vmImage: ubuntu-latest
+
+    steps:
+    - script: |
+        go build -o main main.go
+      displayName: Build Go Project

@@ -1,1 +1,27 @@
-#test
+stages:
+- stage: DotnetTest
+  jobs:
+  - job: Test
+    displayName: Test Job
+    pool:
+      vmImage: ubuntu-latest
+
+    steps:
+    - script: |
+        dotnet test --configuration Release --no-build --verbosity normal
+      displayName: Run .NET Tests
+    - script: |
+        echo "Running additional tests"
+      displayName: Additional Tests
+    - script: |
+        echo "Cleaning up test artifacts"
+      displayName: Cleanup
+    - script: |
+        echo "Running security scans"
+      displayName: Security Scans
+    - script: |
+        echo "Running performance tests"
+      displayName: Performance Tests
+    - script: |
+        echo "Running integration tests"
+      displayName: Integration Tests

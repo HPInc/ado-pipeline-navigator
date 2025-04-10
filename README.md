@@ -2,6 +2,8 @@
 
 ![Navigate](images/navigate.png)
 
+Read the blog [here](https://medium.com/@renypaulm/simplifying-azure-devops-pipeline-workflows-with-ado-pipeline-navigator-50436605b736)
+
 ## Overview
 The Azure DevOps Pipeline Navigator is a Visual Studio Code extension that simplifies navigation, configuration, and management of Azure DevOps pipeline files. It offers advanced features for YAML-based pipelines, enabling seamless integration with external documentation and enhanced syntax support.
 

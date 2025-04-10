@@ -6,9 +6,10 @@ parameters:
   type: string
   default: dev
 
-
 stages:
 - template: test-pipeline/stages/${{ parameters.language }}/build.yaml
+  parameters:
+    javaVersion: '17'
 
 - template: test-pipeline/stages/${{ parameters.language }}/test.yaml
 - template: test-pipeline/stages/deploy.yaml
@@ -17,6 +18,6 @@ stages:
 
 - task: PublishPipelineArtifact@1
   inputs:
-    targetPath: '$(Build.SourcesDirectory)/test-pipeline'
-    artifact: 'test-pipeline'
-    publishLocation: 'pipeline'
+    targetPath: $(Build.SourcesDirectory)/test-pipeline
+    artifact: test-pipeline
+    publishLocation: pipeline

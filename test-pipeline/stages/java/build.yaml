@@ -1,1 +1,17 @@
-#Test
+parameters:
+- name: mavenVersion
+  type: string
+  default: 3.6.3
+- name: javaVersion
+  type: string
+  default: '11'
+
+stages:
+- stage: build
+  jobs:
+  - job: buildJob
+    pool:
+      vmImage: ubuntu-latest
+    steps:
+    - script: mvn clean install
+      displayName: Build with Maven

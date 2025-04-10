@@ -1,1 +1,10 @@
-#test
+jobs:
+- job: GolangTest
+  displayName: Test Job
+  pool:
+    vmImage: ubuntu-latest
+
+  steps:
+  - script: |
+      go test ./...
+    displayName: Run Unit Tests
