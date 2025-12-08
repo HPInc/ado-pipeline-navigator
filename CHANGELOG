@@ -1,3 +1,6 @@
+v1.2.4
+- Fixed task documentation URL navigation to wrong URL for certain tasks
+
 v1.2.3
 - Fix for loading template from a different folder in workspace
 

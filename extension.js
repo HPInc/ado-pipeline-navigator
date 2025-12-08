@@ -4,6 +4,7 @@ const fs = require('fs');
 const yaml = require('js-yaml');
 const axios = require('axios');
 const cheerio = require('cheerio');
+const { getTaskUrl } = require('./taskUrlUtils');
 
 const DEFAULT_FEATURE_TOGGLES = { InternetFetch: false, ReplaceStrings: true };
 const DEFAULT_KEYWORDS = ['parameters', 'stages', 'jobs', 'steps'];
@@ -147,7 +148,7 @@ class AdoPipelineNavigator {
             let decorate = true;
             switch (match[2].trim()) {
                 case 'task':
-                    url = this.getTaskUrl(match[3].trim());
+                    url = getTaskUrl(match[3].trim());
                     break;
                 case 'file':
                 case 'template':
@@ -193,7 +194,7 @@ class AdoPipelineNavigator {
 
         switch (match[2].trim()) {
             case 'task': {
-                let url = this.getTaskUrl(match[3].trim());
+                let url = getTaskUrl(match[3].trim());
                 if (url !== undefined) {
                     vscode.env.openExternal(vscode.Uri.parse(url));
                 }
@@ -232,7 +233,7 @@ class AdoPipelineNavigator {
     }
 
     async getTaskHover(task) {
-        const url = this.getTaskUrl(task);
+        const url = getTaskUrl(task);
         if (!url) return null;
 
         if (!this.featureToggles.InternetFetch) {
@@ -245,15 +246,6 @@ class AdoPipelineNavigator {
         return new vscode.Hover(
             new vscode.MarkdownString(`**Task Documentation:** [Learn more](${url})\n\n\`\`\`yaml\n${usage}\n\`\`\``),
         );
-    }
-
-    getTaskUrl(task) {
-        if (!task.includes('@')) return null;
-
-        const [taskName, version] = task.split('@');
-        const formattedTaskName = taskName.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
-
-        return `https://learn.microsoft.com/en-us/azure/devops/pipelines/tasks/reference/${formattedTaskName}-v${version}?view=azure-devops`;
     }
 
     getFileHover(document, match) {

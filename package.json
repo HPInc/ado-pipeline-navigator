@@ -107,7 +107,8 @@
   "scripts": {
     "build:dev": "webpack --mode none",
     "build:prod": "webpack --mode production",
-    "compile": "webpack --mode production"
+    "compile": "webpack --mode production",
+    "test": "node tests/taskUrl.test.js"
   },
-  "version": "1.2.3"
+  "version": "1.2.4"
 }
