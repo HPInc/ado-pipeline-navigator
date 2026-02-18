@@ -15,9 +15,6 @@ module.exports = (env, argv) => {
         },
         externals: {
             vscode: 'commonjs vscode',
-            // Make axios and cheerio external - they'll be loaded dynamically only when InternetFetch is enabled
-            axios: 'commonjs axios',
-            cheerio: 'commonjs cheerio',
         },
         resolve: {
             extensions: ['.js', '.mjs'],
