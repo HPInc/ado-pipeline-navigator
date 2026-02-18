@@ -5,38 +5,36 @@ repos:
     name: Prettier
     entry: /usr/local/bin/prettier
     language: system
-    types: [file]
+    types: [ file ]
     files: \.(js)$
-    args: [--write]
+    args: [ --write ]
+    exclude: ^extension-bundle\.js$
 - repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
-  rev: v2.12.0
+  rev: v2.15.0
   hooks:
-  - id: pretty-format-yaml
-    args: [--autofix, --indent, '2']
-    types: [file]
-    files: \.(yaml|yml|manifest)$
   - id: pretty-format-ini
-    args: [--autofix]
-    types: [file]
+    args: [ --autofix ]
+    types: [ file ]
     files: \.(properties)$
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v4.5.0
+  rev: v6.0.0
   hooks:
   - id: end-of-file-fixer
+    exclude: ^extension-bundle\.js$
   - id: check-added-large-files
-    args: [--maxkb=1000]
+    args: [ --maxkb=1000 ]
   - id: check-docstring-first
   - id: check-ast
   - id: check-executables-have-shebangs
   - id: check-shebang-scripts-are-executable
   - id: pretty-format-json
-    args: [--autofix]
-    exclude: ^.vscode
+    args: [ --autofix ]
+    exclude: ^.vscode|^extension-bundle\.js$
   - id: mixed-line-ending
-    args: [--fix=lf]
+    args: [ --fix=lf ]
 - repo: https://github.com/jumanjihouse/pre-commit-hooks
   rev: 3.0.0
   hooks:
   - id: shellcheck
   - id: shfmt
-    args: [-i 2 -ci -bn]
+    args: [ -i 2 -ci -bn ]

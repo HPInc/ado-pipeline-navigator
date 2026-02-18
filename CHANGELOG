@@ -1,44 +1,42 @@
+v1.3.0
+- Added: `filePathKeys` configuration for custom file navigation keywords (e.g., 'systemTestTemplate')
+- Added: Task documentation caching to prevent duplicate HTTP requests
+- Added: Hover request throttling to prevent multiple simultaneous fetches
+- Added: Status bar feedback during task documentation fetching (with 5s timeout)
+- Improved: Webpack bundle optimization (output file: extension-bundle.js, 49 KB)
+- Improved: Performance optimizations (debounced decorations, large file skipping)
+- Fixed: Task URLs now only open on Ctrl+click, not Ctrl+hover
+- Fixed: Memory leaks in decoration timeout and cache cleanup
+- Fixed: Null reference checks and error handling throughout
+- Note: axios/cheerio are now optional dependencies (will auto-disable InternetFetch if missing)
+
 v1.2.4
-- Fixed task documentation URL navigation to wrong URL for certain tasks
+- Fixed: Task documentation URL navigation for certain tasks
 
 v1.2.3
-- Fix for loading template from a different folder in workspace
+- Fixed: Template loading from different workspace folders
 
 v1.2.2
-- Bug fixes and code refactor for Sonar lint errors
+- Fixed: Sonar lint errors and code refactoring
 
 v1.2.1
-- Updated README.md
-- Updated build configuration
+- Updated: README and build configuration
 
 v1.2.0
-- Updated npm pacakges
-- Updated build configuration
+- Updated: npm packages and build configuration
 
-v1.0.2
-- Initial version with Ctrl+click & F12 navigation
-
-v1.0.3
-- Support for azure-pipelines
-- Bug fixes
+v1.1.1
+- Fixed: Multi-folder workspace navigation
 
 v1.1.0
-- Breaking change. 
-  - `adopipeline.pathReplacements` property changed to `ado-pipeline-navigator.replacementStrings`
-  - adopipeline in Command Palette changed to ADO Pipeline Navigator
-- Settings Added
-  - ado-pipeline-navigator.replacementStrings => Array of replacement strings
-  - ado-pipeline-navigator.featureToggles => Features to enable or diasble
-  - ado-pipeline-navigator.quickReplaceStringsCount => Number of replacement string to loop from Command Palette Replace String
-- Support for fetching task documentation from internet on hover
-- Support for navigation to taks documentation url on Ctrl+click or F12 of tasks
-- Support for showing the contents of keywords like parameters,jobs,stages etc(configurable in settings) on hover over templates/file
-- Bug fixes
-v1.1.1
-- Support a case where there are multiple folder in the workspace and the target is in one of it.
-  workspace
-    - templates
-      - golang
-        - build.yaml
-    - myapp
-      - pipeline.yaml has a reference to /templates/golang/build.yaml
+- Breaking: Renamed `adopipeline.pathReplacements` to `ado-pipeline-navigator.replacementStrings`
+- Added: InternetFetch feature toggle for task documentation
+- Added: Hover support for template content preview
+- Added: Ctrl+click navigation to task documentation URLs
+
+v1.0.3
+- Added: azure-pipelines language support
+- Fixed: Various bugs
+
+v1.0.2
+- Initial release with Ctrl+click & F12 navigation

@@ -29,7 +29,7 @@ function getTaskUrl(task) {
         /([a-z])([A-Z]{2,})([A-Z][a-z]|$)/g,
         (match, before, acronym, after) => {
             return before + '-' + acronym.toLowerCase() + (after ? '-' + after : '');
-        },
+        }
     );
 
     // Apply standard camelCase to kebab-case conversion

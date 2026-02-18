@@ -1,10 +1,14 @@
 **
-!extension.js
+!extension-bundle.js
 !package.json
 !icon.png
 !README.md
 !LICENSE.txt
 !CHANGELOG
+!taskUrlUtils.js
+!node_modules/axios/**
+!node_modules/cheerio/**
+!node_modules/js-yaml/**
 
 # Test files
 **/test/**
@@ -23,6 +27,5 @@
 # Development specific
 .git/**
 .vscode/**
-node_modules/**
 *.tsconfig.json
 *.eslintrc.json
