@@ -7,18 +7,8 @@ const vscode = __webpack_require__(1);
 const path = __webpack_require__(2);
 const fs = __webpack_require__(3);
 const yaml = __webpack_require__(4);
-const { getTaskUrl } = __webpack_require__(29);
-
-let axios, cheerio;
-let dependenciesAvailable = false;
-
-try {
-    axios = __webpack_require__(30);
-    cheerio = __webpack_require__(31);
-    dependenciesAvailable = true;
-} catch (error) {
-    console.log('ADO Pipeline Navigator: Optional dependencies (axios/cheerio) not available. InternetFetch feature will be disabled.');
-}
+const https = __webpack_require__(29);
+const { getTaskUrl } = __webpack_require__(30);
 
 const DEFAULT_FEATURE_TOGGLES = { InternetFetch: false, ReplaceStrings: true };
 const DEFAULT_KEYWORDS = ['parameters', 'stages', 'jobs', 'steps'];
@@ -177,10 +167,12 @@ class AdoPipelineNavigator {
         // Create fetch promise and store it
         const fetchPromise = (async () => {
             try {
-                const response = await axios.get(url, { timeout: 5000 });
-                const $ = cheerio.load(response.data);
-                const syntaxSection = $('#syntax');
-                const result = syntaxSection.nextAll('div').find('pre > code').first().text().trim();
+                const html = await this.fetchUrl(url);
+                
+                // Extract YAML code block after #syntax section using regex
+                // Look for <pre><code>...</code></pre> pattern after id="syntax"
+                const syntaxMatch = html.match(/id=["']syntax["'][^>]*>[\s\S]*?<pre[^>]*>\s*<code[^>]*>([\s\S]*?)<\/code>\s*<\/pre>/i);
+                const result = syntaxMatch ? this.decodeHtmlEntities(syntaxMatch[1]).trim() : null;
                 
                 // Cache the result (including null results to avoid refetching failed URLs)
                 this.documentationCache.set(url, result);
@@ -199,6 +191,39 @@ class AdoPipelineNavigator {
         // Store the promise to prevent duplicate fetches
         this.pendingFetches.set(url, fetchPromise);
         return await fetchPromise;
+    }
+
+    fetchUrl(url) {
+        return new Promise((resolve, reject) => {
+            const request = https.get(url, { timeout: 5000 }, (response) => {
+                if (response.statusCode !== 200) {
+                    reject(new Error(`HTTP ${response.statusCode}`));
+                    return;
+                }
+
+                let data = '';
+                response.on('data', (chunk) => data += chunk);
+                response.on('end', () => resolve(data));
+                response.on('error', reject);
+            });
+
+            request.on('timeout', () => {
+                request.destroy();
+                reject(new Error('Request timeout'));
+            });
+
+            request.on('error', reject);
+        });
+    }
+
+    decodeHtmlEntities(html) {
+        return html
+            .replace(/&amp;/g, '&')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&quot;/g, '"')
+            .replace(/&#39;/g, "'")
+            .replace(/&nbsp;/g, ' ');
     }
 
     provideDocumentLinks(document, token) {
@@ -340,12 +365,6 @@ class AdoPipelineNavigator {
                     );
                     message.isTrusted = true;
                     return new vscode.Hover(message);
-                }
-
-                if (!dependenciesAvailable) {
-                    return new vscode.Hover(
-                        new vscode.MarkdownString(`**Task documentation fetching is unavailable**`)
-                    );
                 }
 
                 const url = getTaskUrl(task);
@@ -4689,6 +4708,13 @@ module.exports.dump = dump;
 /* 29 */
 /***/ ((module) => {
 
+"use strict";
+module.exports = require("https");
+
+/***/ }),
+/* 30 */
+/***/ ((module) => {
+
 /**
  * Utility function to generate Azure DevOps task documentation URLs
  * @param {string} task - Task name with version (e.g., "NuGetAuthenticate@1")
@@ -4701,50 +4727,29 @@ function getTaskUrl(task) {
 
     let formattedTaskName = taskName;
 
-    // Handle special multi-capital prefixes (NuGet, PyPI, DotNet)
-    // Convert them to single-capital format for proper kebab-case conversion
-    // NuGet -> Nuget, PyPI -> Pypi, DotNet -> Dotnet
+    // First, handle compound brand/product names by treating them as single units
+    // These should not be split with hyphens
     formattedTaskName = formattedTaskName
-        .replace(/^NuGet/g, 'Nuget')
-        .replace(/^PyPI/g, 'Pypi')
-        .replace(/DotNet/g, 'Dotnet');
+        .replace(/DotNet/g, 'Dotnet')  // DotNetCoreCLI → DotnetCoreCLI → dotnet-core-cli
+        .replace(/NuGet/g, 'Nuget')     // NuGetAuthenticate → NugetAuthenticate → nuget-authenticate
+        .replace(/PowerShell/g, 'Powershell')  // PowerShell → Powershell → powershell
+        .replace(/VSBuild/g, 'Vsbuild')        // VSBuild → Vsbuild → vsbuild
+        .replace(/VSTest/g, 'Vstest')          // VSTest → Vstest → vstest
+        .replace(/MSBuild/g, 'Msbuild')        // MSBuild → Msbuild → msbuild
+        .replace(/PyPI/g, 'Pypi');              // PyPI → Pypi → pypi
 
-    // Handle consecutive uppercase letters (acronyms)
-    // First: Handle acronyms at start followed by uppercase: VSBuild -> vs-Build
-    formattedTaskName = formattedTaskName.replace(/^([A-Z]{2,})([A-Z][a-z])/g, (match, acronym, nextChar) => {
-        return acronym.toLowerCase() + '-' + nextChar;
-    });
-
-    // Handle acronyms in middle: AzureCLI -> Azure-CLI, InstallSSHKey -> Install-SSH-Key
-    formattedTaskName = formattedTaskName.replace(
-        /([a-z])([A-Z]{2,})([A-Z][a-z]|$)/g,
-        (match, before, acronym, after) => {
-            return before + '-' + acronym.toLowerCase() + (after ? '-' + after : '');
-        }
-    );
-
-    // Apply standard camelCase to kebab-case conversion
-    formattedTaskName = formattedTaskName.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
+    // Now convert camelCase to kebab-case then lowercase
+    // Microsoft Learn URLs use kebab-case format (e.g., nuget-authenticate, install-ssh-key)
+    formattedTaskName = formattedTaskName
+        .replace(/([a-z])([A-Z])/g, '$1-$2')  // Add hyphen between lowercase and uppercase
+        .replace(/([A-Z])([A-Z][a-z])/g, '$1-$2')  // Add hyphen between consecutive uppercase followed by lowercase
+        .toLowerCase();
 
     return `https://learn.microsoft.com/en-us/azure/devops/pipelines/tasks/reference/${formattedTaskName}-v${version}?view=azure-pipelines`;
 }
 
 module.exports = { getTaskUrl };
 
-
-/***/ }),
-/* 30 */
-/***/ ((module) => {
-
-"use strict";
-module.exports = require("axios");
-
-/***/ }),
-/* 31 */
-/***/ ((module) => {
-
-"use strict";
-module.exports = require("cheerio");
 
 /***/ })
 /******/ 	]);

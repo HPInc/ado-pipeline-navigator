@@ -1,14 +1,17 @@
 v1.3.0
+- Breaking: Minimum VS Code version updated to 1.85.0 (November 2023)
 - Added: `filePathKeys` configuration for custom file navigation keywords (e.g., 'systemTestTemplate')
 - Added: Task documentation caching to prevent duplicate HTTP requests
 - Added: Hover request throttling to prevent multiple simultaneous fetches
 - Added: Status bar feedback during task documentation fetching (with 5s timeout)
-- Improved: Webpack bundle optimization (output file: extension-bundle.js, 49 KB)
+- Improved: Webpack bundle optimization (output file: extension-bundle.js, 49.7 KB)
+- Improved: Replaced axios/cheerio with native Node.js https module (eliminated ~1.1MB dependencies)
 - Improved: Performance optimizations (debounced decorations, large file skipping)
+- Improved: Task documentation URLs now include ?view=azure-pipelines query parameter
+- Fixed: Task documentation URL generation for compound task names (VSBuild, PowerShell, NuGetAuthenticate, DotNetCoreCLI, etc.)
 - Fixed: Task URLs now only open on Ctrl+click, not Ctrl+hover
 - Fixed: Memory leaks in decoration timeout and cache cleanup
 - Fixed: Null reference checks and error handling throughout
-- Note: axios/cheerio are now optional dependencies (will auto-disable InternetFetch if missing)
 
 v1.2.4
 - Fixed: Task documentation URL navigation for certain tasks

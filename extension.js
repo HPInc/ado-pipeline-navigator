@@ -2,20 +2,8 @@ const vscode = require('vscode');
 const path = require('path');
 const fs = require('fs');
 const yaml = require('js-yaml');
+const https = require('https');
 const { getTaskUrl } = require('./taskUrlUtils');
-
-let axios, cheerio;
-let dependenciesAvailable = false;
-
-try {
-    axios = require('axios');
-    cheerio = require('cheerio');
-    dependenciesAvailable = true;
-} catch (error) {
-    console.log(
-        'ADO Pipeline Navigator: Optional dependencies (axios/cheerio) not available. InternetFetch feature will be disabled.'
-    );
-}
 
 const DEFAULT_FEATURE_TOGGLES = { InternetFetch: false, ReplaceStrings: true };
 const DEFAULT_KEYWORDS = ['parameters', 'stages', 'jobs', 'steps'];
@@ -174,10 +162,14 @@ class AdoPipelineNavigator {
         // Create fetch promise and store it
         const fetchPromise = (async () => {
             try {
-                const response = await axios.get(url, { timeout: 5000 });
-                const $ = cheerio.load(response.data);
-                const syntaxSection = $('#syntax');
-                const result = syntaxSection.nextAll('div').find('pre > code').first().text().trim();
+                const html = await this.fetchUrl(url);
+
+                // Extract YAML code block after #syntax section using regex
+                // Look for <pre><code>...</code></pre> pattern after id="syntax"
+                const syntaxMatch = html.match(
+                    /id=["']syntax["'][^>]*>[\s\S]*?<pre[^>]*>\s*<code[^>]*>([\s\S]*?)<\/code>\s*<\/pre>/i
+                );
+                const result = syntaxMatch ? this.decodeHtmlEntities(syntaxMatch[1]).trim() : null;
 
                 // Cache the result (including null results to avoid refetching failed URLs)
                 this.documentationCache.set(url, result);
@@ -196,6 +188,39 @@ class AdoPipelineNavigator {
         // Store the promise to prevent duplicate fetches
         this.pendingFetches.set(url, fetchPromise);
         return await fetchPromise;
+    }
+
+    fetchUrl(url) {
+        return new Promise((resolve, reject) => {
+            const request = https.get(url, { timeout: 5000 }, (response) => {
+                if (response.statusCode !== 200) {
+                    reject(new Error(`HTTP ${response.statusCode}`));
+                    return;
+                }
+
+                let data = '';
+                response.on('data', (chunk) => (data += chunk));
+                response.on('end', () => resolve(data));
+                response.on('error', reject);
+            });
+
+            request.on('timeout', () => {
+                request.destroy();
+                reject(new Error('Request timeout'));
+            });
+
+            request.on('error', reject);
+        });
+    }
+
+    decodeHtmlEntities(html) {
+        return html
+            .replace(/&amp;/g, '&')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&quot;/g, '"')
+            .replace(/&#39;/g, "'")
+            .replace(/&nbsp;/g, ' ');
     }
 
     provideDocumentLinks(document, token) {
@@ -337,12 +362,6 @@ class AdoPipelineNavigator {
                     );
                     message.isTrusted = true;
                     return new vscode.Hover(message);
-                }
-
-                if (!dependenciesAvailable) {
-                    return new vscode.Hover(
-                        new vscode.MarkdownString(`**Task documentation fetching is unavailable**`)
-                    );
                 }
 
                 const url = getTaskUrl(task);

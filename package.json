@@ -96,24 +96,20 @@
   },
   "description": "Navigate Azure Pipeline templates with Ctrl+click",
   "devDependencies": {
-    "@types/vscode": "^1.109.0",
+    "@types/vscode": "^1.85.0",
     "terser-webpack-plugin": "^5.3.16",
     "webpack": "^5.105.2",
     "webpack-cli": "^6.0.1"
   },
   "displayName": "ADO Pipeline Navigator",
   "engines": {
-    "vscode": ">=1.64.0"
+    "vscode": "^1.85.0"
   },
   "extensionDependencies": [],
   "icon": "icon.png",
   "license": "MIT",
   "main": "./extension-bundle.js",
   "name": "ado-pipeline-navigator",
-  "optionalDependencies": {
-    "axios": "^1.13.5",
-    "cheerio": "^1.2.0"
-  },
   "publisher": "RenyPaul",
   "repository": {
     "type": "git",
