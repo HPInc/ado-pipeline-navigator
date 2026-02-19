@@ -10,30 +10,23 @@ function getTaskUrl(task) {
 
     let formattedTaskName = taskName;
 
-    // Handle special multi-capital prefixes (NuGet, PyPI, DotNet)
-    // Convert them to single-capital format for proper kebab-case conversion
-    // NuGet -> Nuget, PyPI -> Pypi, DotNet -> Dotnet
+    // First, handle compound brand/product names by treating them as single units
+    // These should not be split with hyphens
     formattedTaskName = formattedTaskName
-        .replace(/^NuGet/g, 'Nuget')
-        .replace(/^PyPI/g, 'Pypi')
-        .replace(/DotNet/g, 'Dotnet');
+        .replace(/DotNet/g, 'Dotnet') // DotNetCoreCLI → DotnetCoreCLI → dotnet-core-cli
+        .replace(/NuGet/g, 'Nuget') // NuGetAuthenticate → NugetAuthenticate → nuget-authenticate
+        .replace(/PowerShell/g, 'Powershell') // PowerShell → Powershell → powershell
+        .replace(/VSBuild/g, 'Vsbuild') // VSBuild → Vsbuild → vsbuild
+        .replace(/VSTest/g, 'Vstest') // VSTest → Vstest → vstest
+        .replace(/MSBuild/g, 'Msbuild') // MSBuild → Msbuild → msbuild
+        .replace(/PyPI/g, 'Pypi'); // PyPI → Pypi → pypi
 
-    // Handle consecutive uppercase letters (acronyms)
-    // First: Handle acronyms at start followed by uppercase: VSBuild -> vs-Build
-    formattedTaskName = formattedTaskName.replace(/^([A-Z]{2,})([A-Z][a-z])/g, (match, acronym, nextChar) => {
-        return acronym.toLowerCase() + '-' + nextChar;
-    });
-
-    // Handle acronyms in middle: AzureCLI -> Azure-CLI, InstallSSHKey -> Install-SSH-Key
-    formattedTaskName = formattedTaskName.replace(
-        /([a-z])([A-Z]{2,})([A-Z][a-z]|$)/g,
-        (match, before, acronym, after) => {
-            return before + '-' + acronym.toLowerCase() + (after ? '-' + after : '');
-        },
-    );
-
-    // Apply standard camelCase to kebab-case conversion
-    formattedTaskName = formattedTaskName.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
+    // Now convert camelCase to kebab-case then lowercase
+    // Microsoft Learn URLs use kebab-case format (e.g., nuget-authenticate, install-ssh-key)
+    formattedTaskName = formattedTaskName
+        .replace(/([a-z])([A-Z])/g, '$1-$2') // Add hyphen between lowercase and uppercase
+        .replace(/([A-Z])([A-Z][a-z])/g, '$1-$2') // Add hyphen between consecutive uppercase followed by lowercase
+        .toLowerCase();
 
     return `https://learn.microsoft.com/en-us/azure/devops/pipelines/tasks/reference/${formattedTaskName}-v${version}?view=azure-pipelines`;
 }

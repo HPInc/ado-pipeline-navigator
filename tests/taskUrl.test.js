@@ -22,17 +22,17 @@ const testCases = [
     {
         task: 'VSBuild@1',
         expected:
-            'https://learn.microsoft.com/en-us/azure/devops/pipelines/tasks/reference/vs-build-v1?view=azure-pipelines',
+            'https://learn.microsoft.com/en-us/azure/devops/pipelines/tasks/reference/vsbuild-v1?view=azure-pipelines',
     },
     {
         task: 'MSBuild@1',
         expected:
-            'https://learn.microsoft.com/en-us/azure/devops/pipelines/tasks/reference/ms-build-v1?view=azure-pipelines',
+            'https://learn.microsoft.com/en-us/azure/devops/pipelines/tasks/reference/msbuild-v1?view=azure-pipelines',
     },
     {
         task: 'VSTest@3',
         expected:
-            'https://learn.microsoft.com/en-us/azure/devops/pipelines/tasks/reference/vs-test-v3?view=azure-pipelines',
+            'https://learn.microsoft.com/en-us/azure/devops/pipelines/tasks/reference/vstest-v3?view=azure-pipelines',
     },
     // DotNet tasks
     {
@@ -98,7 +98,7 @@ const testCases = [
     {
         task: 'AzurePowerShell@5',
         expected:
-            'https://learn.microsoft.com/en-us/azure/devops/pipelines/tasks/reference/azure-power-shell-v5?view=azure-pipelines',
+            'https://learn.microsoft.com/en-us/azure/devops/pipelines/tasks/reference/azure-powershell-v5?view=azure-pipelines',
     },
     {
         task: 'AzureKeyVault@2',
@@ -152,7 +152,7 @@ const testCases = [
     {
         task: 'PowerShell@2',
         expected:
-            'https://learn.microsoft.com/en-us/azure/devops/pipelines/tasks/reference/power-shell-v2?view=azure-pipelines',
+            'https://learn.microsoft.com/en-us/azure/devops/pipelines/tasks/reference/powershell-v2?view=azure-pipelines',
     },
     {
         task: 'Bash@3',

@@ -2,3 +2,6 @@
 /dist
 *.vsix
 /temp
+extension-bundle.js
+extension-bundle.js.map
+extension-min.js

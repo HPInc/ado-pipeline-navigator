@@ -1,5 +1,5 @@
 **
-!extension.js
+!extension-bundle.js
 !package.json
 !icon.png
 !README.md
@@ -23,6 +23,5 @@
 # Development specific
 .git/**
 .vscode/**
-node_modules/**
 *.tsconfig.json
 *.eslintrc.json

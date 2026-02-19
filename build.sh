@@ -41,23 +41,6 @@ while getopts ":iprd" OPT; do
   esac
 done
 
-# copy all files to dist
-declare FILES=(
-  .vscodeignore
-  CHANGELOG
-  LICENSE
-  LICENSE.txt
-  README.md
-  webpack.config.js
-  package.json
-  icon.png
-  taskUrlUtils.js
-  extension.js)
-
-mkdir -p dist
-cp -af "${FILES[@]}" dist
-cd dist || exit 1
-
 if [ $INSTALL -eq 1 ]; then
   npm install -g @vscode/vsce
   npm install -g webpack-cli
@@ -65,30 +48,24 @@ if [ $INSTALL -eq 1 ]; then
   npm install -g prettier
 fi
 
+# Install dependencies
 npm install
 npm audit fix
-npm run compile
+
+# Build extension (webpack outputs to extension-bundle.js)
 if [ $DEVELOPMENT -eq 1 ]; then
   npm run build:dev
-  npx webpack --mode development
+  exit 0
 else
   npm run build:prod
-  npx webpack --mode production
 fi
 
 rm -f ./*.vsix
 
-#VERSION=$(jq -Mr .version package.json)
 if [ $RELEASE -eq 1 ]; then
   if [ $PRE_RELEASE -eq 1 ]; then
     vsce package --pre-release
   else
     vsce package
   fi
-  #scp "ado-pipeline-navigator-${VERSION}.vsix" tools:/var/www/html/files/ado-pipeline-navigator.vsix
-  #code --install-extension "ado-pipeline-navigator-${VERSION}.vsix"
-  #vsce publish --pre-release
 fi
-
-rm -f ../*.vsix
-mv ./*.vsix ../
