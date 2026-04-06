@@ -17,6 +17,8 @@ class AdoPipelineNavigator {
         this.loadConfiguration();
         this.updatePattern();
         this.decorationTimeout = null;
+        this.uriExistsCache = new Map();
+        this.aliasWorkspaceMatchCache = new Map();
         this.documentationCache = new Map(); // Cache for fetched task documentation
         this.pendingFetches = new Map(); // Track in-progress fetches to avoid duplicates
         this.activeHovers = new Map(); // Track active hover requests by task name
@@ -80,17 +82,39 @@ class AdoPipelineNavigator {
             const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
             rootPath = workspaceFolder ? workspaceFolder.uri.fsPath : '';
         }
-        let filePath = match[3].trim();
-
-        if (filePath.includes('@')) {
-            filePath = filePath.substring(0, filePath.indexOf('@'));
-        }
+        const { filePathWithNoAlias, repositoryAlias } = this.parseReferencedPath(match[3]);
+        let filePath = filePathWithNoAlias;
 
         if (this.featureToggles.ReplaceStrings) {
             filePath = this.applyReplacements(filePath);
         }
 
-        return this.resolveFilePath(document, rootPath, filePath);
+        return this.resolveFilePath(document, rootPath, filePath, repositoryAlias);
+    }
+
+    parseReferencedPath(filePath) {
+        const normalizedPath = this.normalizeReferencedPath(filePath);
+        const atIndex = normalizedPath.indexOf('@');
+        if (atIndex < 0) {
+            return { filePathWithNoAlias: normalizedPath, repositoryAlias: '' };
+        }
+
+        return {
+            filePathWithNoAlias: normalizedPath.substring(0, atIndex),
+            repositoryAlias: normalizedPath.substring(atIndex + 1).trim(),
+        };
+    }
+
+    normalizeReferencedPath(filePath) {
+        let normalizedPath = filePath.trim();
+        if (
+            (normalizedPath.startsWith('"') && normalizedPath.endsWith('"')) ||
+            (normalizedPath.startsWith("'") && normalizedPath.endsWith("'"))
+        ) {
+            normalizedPath = normalizedPath.substring(1, normalizedPath.length - 1);
+        }
+
+        return normalizedPath;
     }
 
     applyReplacements(filePath) {
@@ -99,52 +123,301 @@ class AdoPipelineNavigator {
         }, filePath);
     }
 
-    resolveFilePath(document, rootPath, filePath) {
+    splitPathSegments(filePath) {
+        return filePath
+            .replace(/^[/\\]+/, '')
+            .split(/[/\\]+/)
+            .filter((segment) => segment.length > 0);
+    }
+
+    buildWorkspaceUri(baseUri, filePath) {
+        const pathSegments = this.splitPathSegments(filePath);
+        if (pathSegments.length === 0) {
+            return baseUri;
+        }
+
+        return vscode.Uri.joinPath(baseUri, ...pathSegments);
+    }
+
+    normalizePathForSuffixMatch(filePath) {
+        return filePath
+            .replace(/^[/\\]+/, '')
+            .replace(/\\/g, '/')
+            .toLowerCase();
+    }
+
+    clearResolutionCaches() {
+        this.uriExistsCache.clear();
+        this.aliasWorkspaceMatchCache.clear();
+    }
+
+    getConventionFallbackRelativePaths(filePath, repoRelativePath) {
+        const normalizedRepoRelativePath = this.normalizePathForSuffixMatch(repoRelativePath || filePath);
+        const fallbackPaths = [];
+        const projectTemplateMatch = normalizedRepoRelativePath.match(/^projects\/[^/]+\/templates\/([^/]+\.ya?ml)$/i);
+
+        if (projectTemplateMatch) {
+            const templateFileName = projectTemplateMatch[1];
+            fallbackPaths.push(`templates/codeway-${templateFileName}`);
+        }
+
+        return fallbackPaths;
+    }
+
+    async uriExists(uri) {
+        const cacheKey = uri.toString();
+        if (this.uriExistsCache.has(cacheKey)) {
+            return this.uriExistsCache.get(cacheKey);
+        }
+
+        try {
+            await vscode.workspace.fs.stat(uri);
+            this.uriExistsCache.set(cacheKey, true);
+            return true;
+        } catch {
+            if (uri.scheme === 'file') {
+                const exists = fs.existsSync(uri.fsPath);
+                this.uriExistsCache.set(cacheKey, exists);
+                return exists;
+            }
+            this.uriExistsCache.set(cacheKey, false);
+            return false;
+        }
+    }
+
+    async readTextFile(fileReference) {
+        const uri = typeof fileReference === 'string' ? vscode.Uri.file(fileReference) : fileReference;
+        try {
+            const fileContents = await vscode.workspace.fs.readFile(uri);
+            return Buffer.from(fileContents).toString('utf8');
+        } catch {
+            return fs.readFileSync(uri.fsPath, 'utf8');
+        }
+    }
+
+    async findAliasWorkspaceMatch(
+        repositoryWorkspaceFolders,
+        filePath,
+        repoRelativePath,
+        useConventionFallback = false
+    ) {
+        if (!repositoryWorkspaceFolders || repositoryWorkspaceFolders.length === 0) {
+            return null;
+        }
+
+        const normalizedFilePath = this.normalizePathForSuffixMatch(filePath);
+        const normalizedRepoRelativePath = this.normalizePathForSuffixMatch(repoRelativePath);
+        const folderCacheKey = repositoryWorkspaceFolders
+            .map((workspaceFolder) => workspaceFolder.uri.toString())
+            .sort()
+            .join('|');
+        const matchCacheKey = `${folderCacheKey}|${normalizedFilePath}|${normalizedRepoRelativePath}|${useConventionFallback}`;
+        if (this.aliasWorkspaceMatchCache.has(matchCacheKey)) {
+            const cachedMatch = this.aliasWorkspaceMatchCache.get(matchCacheKey);
+            return cachedMatch ? vscode.Uri.parse(cachedMatch) : null;
+        }
+
+        const matchingSuffixes = [normalizedRepoRelativePath, normalizedFilePath].filter((value) => value.length > 0);
+        const basename = path.posix.basename(normalizedRepoRelativePath || normalizedFilePath);
+        if (!basename) {
+            this.aliasWorkspaceMatchCache.set(matchCacheKey, null);
+            return null;
+        }
+
+        const fallbackRelativePaths = useConventionFallback
+            ? this.getConventionFallbackRelativePaths(filePath, repoRelativePath)
+            : [];
+        const fallbackBasenames = fallbackRelativePaths
+            .map((fallbackRelativePath) => path.posix.basename(this.normalizePathForSuffixMatch(fallbackRelativePath)))
+            .filter((fallbackBasename) => fallbackBasename.length > 0);
+        const basenamesToSearch = [basename, ...fallbackBasenames];
+
+        for (const workspaceFolder of repositoryWorkspaceFolders) {
+            let matches = [];
+            for (const basenameToSearch of basenamesToSearch) {
+                const filePattern = new vscode.RelativePattern(workspaceFolder, `**/${basenameToSearch}`);
+                const matchesForBasename = await vscode.workspace.findFiles(filePattern, null, 200);
+                if (matchesForBasename.length > 0) {
+                    matches = matches.concat(matchesForBasename);
+                }
+            }
+
+            if (matches.length === 0) {
+                continue;
+            }
+
+            const normalizedFallbackSuffixes = fallbackRelativePaths
+                .map((fallbackRelativePath) => this.normalizePathForSuffixMatch(fallbackRelativePath))
+                .filter((fallbackSuffix) => fallbackSuffix.length > 0);
+
+            const bestMatch = matches.find((matchUri) => {
+                const normalizedMatchPath = this.normalizePathForSuffixMatch(matchUri.path);
+                return (
+                    matchingSuffixes.some((suffix) => normalizedMatchPath.endsWith(suffix)) ||
+                    normalizedFallbackSuffixes.some((suffix) => normalizedMatchPath.endsWith(suffix))
+                );
+            });
+
+            if (bestMatch) {
+                this.aliasWorkspaceMatchCache.set(matchCacheKey, bestMatch.toString());
+                return bestMatch;
+            }
+
+            this.aliasWorkspaceMatchCache.set(matchCacheKey, matches[0].toString());
+            return matches[0];
+        }
+
+        this.aliasWorkspaceMatchCache.set(matchCacheKey, null);
+        return null;
+    }
+
+    async resolveFilePath(document, rootPath, filePath, repositoryAlias = '') {
         const possiblePaths = [];
+        const repoRelativePath = filePath.replace(/^[/\\]+/, '');
+        const currentWorkspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
+
+        const repositoryWorkspaceFolders = this.getWorkspaceFoldersByAlias(document, repositoryAlias);
+        for (const workspaceFolder of repositoryWorkspaceFolders) {
+            if (repoRelativePath.length > 0) {
+                possiblePaths.push(this.buildWorkspaceUri(workspaceFolder.uri, repoRelativePath));
+            }
+            possiblePaths.push(this.buildWorkspaceUri(workspaceFolder.uri, filePath));
+        }
+
+        if (path.isAbsolute(filePath)) {
+            possiblePaths.push(vscode.Uri.file(filePath));
+        }
 
         if (filePath.startsWith('./') || filePath.startsWith('../')) {
-            possiblePaths.push(path.join(path.dirname(document.uri.fsPath), filePath));
+            possiblePaths.push(vscode.Uri.file(path.resolve(path.dirname(document.uri.fsPath), filePath)));
         }
-        possiblePaths.push(path.join(rootPath, filePath));
 
-        for (const fileAbsPath of possiblePaths) {
-            if (fs.existsSync(fileAbsPath)) {
-                return { found: true, fileAbsPath };
+        if (repoRelativePath.length > 0) {
+            if (currentWorkspaceFolder) {
+                possiblePaths.push(this.buildWorkspaceUri(currentWorkspaceFolder.uri, repoRelativePath));
+            } else {
+                possiblePaths.push(vscode.Uri.file(path.join(rootPath, repoRelativePath)));
             }
         }
 
-        const workspacePaths = this.searchWorkspaceFolders(filePath);
+        for (const candidateUri of possiblePaths) {
+            const exists = await this.uriExists(candidateUri);
+            if (exists) {
+                return { found: true, fileAbsPath: candidateUri.fsPath, uri: candidateUri };
+            }
+        }
+
+        const aliasWorkspaceMatch = await this.findAliasWorkspaceMatch(
+            repositoryWorkspaceFolders,
+            filePath,
+            repoRelativePath,
+            false
+        );
+        if (aliasWorkspaceMatch) {
+            return { found: true, fileAbsPath: aliasWorkspaceMatch.fsPath, uri: aliasWorkspaceMatch };
+        }
+
+        const workspacePaths = await this.searchWorkspaceFolders(filePath, repoRelativePath, repositoryAlias);
         if (workspacePaths.length > 0) {
-            return { found: true, fileAbsPath: workspacePaths[0] };
+            return { found: true, fileAbsPath: workspacePaths[0].fsPath, uri: workspacePaths[0] };
+        }
+
+        const fallbackRelativePaths = this.getConventionFallbackRelativePaths(filePath, repoRelativePath);
+        if (fallbackRelativePaths.length > 0) {
+            for (const workspaceFolder of repositoryWorkspaceFolders) {
+                for (const fallbackRelativePath of fallbackRelativePaths) {
+                    const fallbackUri = this.buildWorkspaceUri(workspaceFolder.uri, fallbackRelativePath);
+                    const fallbackExists = await this.uriExists(fallbackUri);
+                    if (fallbackExists) {
+                        return { found: true, fileAbsPath: fallbackUri.fsPath, uri: fallbackUri };
+                    }
+                }
+            }
+
+            const conventionAliasMatch = await this.findAliasWorkspaceMatch(
+                repositoryWorkspaceFolders,
+                filePath,
+                repoRelativePath,
+                true
+            );
+            if (conventionAliasMatch) {
+                return { found: true, fileAbsPath: conventionAliasMatch.fsPath, uri: conventionAliasMatch };
+            }
         }
 
         return { found: false, fileAbsPath: filePath };
     }
 
-    searchWorkspaceFolders(filePath) {
+    getWorkspaceFoldersByAlias(document, repositoryAlias) {
         if (!vscode.workspace.workspaceFolders) {
             return [];
         }
 
-        for (let workspaceFolder of vscode.workspace.workspaceFolders) {
-            if (fs.existsSync(path.join(workspaceFolder.uri.fsPath, filePath))) {
-                return [path.join(workspaceFolder.uri.fsPath, filePath)];
+        if (!repositoryAlias) {
+            return [];
+        }
+
+        if (repositoryAlias === 'self') {
+            const currentWorkspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
+            return currentWorkspaceFolder ? [currentWorkspaceFolder] : [];
+        }
+
+        const matchingFolders = vscode.workspace.workspaceFolders.filter(
+            (workspaceFolder) =>
+                path.basename(workspaceFolder.uri.fsPath).toLowerCase() === repositoryAlias.toLowerCase()
+        );
+        return matchingFolders;
+    }
+
+    async searchWorkspaceFolders(filePath, repoRelativePath = filePath, repositoryAlias = '') {
+        if (!vscode.workspace.workspaceFolders) {
+            return [];
+        }
+
+        const candidatePaths = [filePath];
+        if (repoRelativePath && repoRelativePath !== filePath) {
+            candidatePaths.unshift(repoRelativePath);
+        }
+
+        let workspaceFolders = vscode.workspace.workspaceFolders;
+        if (repositoryAlias) {
+            const aliasLower = repositoryAlias.toLowerCase();
+            const aliasMatches = workspaceFolders.filter(
+                (workspaceFolder) => path.basename(workspaceFolder.uri.fsPath).toLowerCase() === aliasLower
+            );
+            if (aliasMatches.length > 0) {
+                workspaceFolders = aliasMatches;
             }
+        }
+
+        for (let workspaceFolder of workspaceFolders) {
+            for (const candidatePath of candidatePaths) {
+                const directCandidateUri = this.buildWorkspaceUri(workspaceFolder.uri, candidatePath);
+                const exists = await this.uriExists(directCandidateUri);
+                if (exists) {
+                    return [directCandidateUri];
+                }
+            }
+
             try {
-                let files = fs.readdirSync(workspaceFolder.uri.fsPath);
-                let dirs = files.filter(
-                    (file) =>
-                        fs.statSync(path.join(workspaceFolder.uri.fsPath, file)).isDirectory() &&
-                        fs.existsSync(path.join(workspaceFolder.uri.fsPath, file, filePath))
-                );
-                if (dirs.length > 0) {
-                    return [path.join(workspaceFolder.uri.fsPath, dirs[0], filePath)];
+                const files = await vscode.workspace.fs.readDirectory(workspaceFolder.uri);
+                for (const [fileName, fileType] of files) {
+                    if (fileType !== vscode.FileType.Directory) {
+                        continue;
+                    }
+
+                    const nestedFolderUri = vscode.Uri.joinPath(workspaceFolder.uri, fileName);
+                    for (const candidatePath of candidatePaths) {
+                        const nestedCandidateUri = this.buildWorkspaceUri(nestedFolderUri, candidatePath);
+                        if (await this.uriExists(nestedCandidateUri)) {
+                            return [nestedCandidateUri];
+                        }
+                    }
                 }
             } catch (error) {
                 console.error(`Error reading workspace folder: ${error.message}`);
             }
         }
-
         return [];
     }
 
@@ -308,7 +581,7 @@ class AdoPipelineNavigator {
     }
 
     // Open the file or task documentation on ctrl+click or F12
-    provideDefinition(document, position, token) {
+    async provideDefinition(document, position, token) {
         if (!document || token?.isCancellationRequested) {
             return;
         }
@@ -322,8 +595,8 @@ class AdoPipelineNavigator {
 
         const keyword = match[2].trim();
         if (this.isFilePathKey(keyword)) {
-            let result = this.getFilePath(document, match);
-            let uri = vscode.Uri.file(result.fileAbsPath);
+            let result = await this.getFilePath(document, match);
+            let uri = result.uri || vscode.Uri.file(result.fileAbsPath);
             return new vscode.Location(uri, new vscode.Position(0, 0));
         }
         return null;
@@ -402,14 +675,14 @@ class AdoPipelineNavigator {
         return await hoverPromise;
     }
 
-    getFileHover(document, match) {
-        let result = this.getFilePath(document, match);
+    async getFileHover(document, match) {
+        let result = await this.getFilePath(document, match);
         let filePath = result.fileAbsPath;
-        let uri = vscode.Uri.file(filePath);
+        let uri = result.uri || vscode.Uri.file(filePath);
         let hoverText = `[${filePath}](${uri})`;
         if (result.found) {
             try {
-                let fileContents = fs.readFileSync(filePath, 'utf8');
+                let fileContents = await this.readTextFile(uri);
                 let yamlContents = yaml.load(fileContents);
                 if (yamlContents && typeof yamlContents === 'object') {
                     let displayItems = {};
@@ -541,6 +814,24 @@ function activate(context) {
         })
     );
 
+    context.subscriptions.push(
+        vscode.workspace.onDidCreateFiles(() => {
+            navigator.clearResolutionCaches();
+        })
+    );
+
+    context.subscriptions.push(
+        vscode.workspace.onDidDeleteFiles(() => {
+            navigator.clearResolutionCaches();
+        })
+    );
+
+    context.subscriptions.push(
+        vscode.workspace.onDidRenameFiles(() => {
+            navigator.clearResolutionCaches();
+        })
+    );
+
     let commandFunctionMap = {
         replacementStringsCommand: replacementStringsCommand,
         featureTogglesCommand: featureTogglesCommand,
@@ -557,6 +848,7 @@ function activate(context) {
     context.subscriptions.push(
         vscode.workspace.onDidChangeConfiguration((event) => {
             if (event.affectsConfiguration('ado-pipeline-navigator.replacementStrings')) {
+                navigator.clearResolutionCaches();
                 if (vscode.window.activeTextEditor) {
                     navigator.applyDecorations(vscode.window.activeTextEditor.document);
                 }
@@ -567,6 +859,7 @@ function activate(context) {
             }
             // Update custom template keywords when settings change
             if (event.affectsConfiguration('ado-pipeline-navigator.filePathKeys')) {
+                navigator.clearResolutionCaches();
                 navigator.loadConfiguration();
                 navigator.updatePattern();
                 if (vscode.window.activeTextEditor) {
@@ -585,6 +878,7 @@ function deactivate() {
     }
     // Clear caches
     if (navigatorInstance) {
+        navigatorInstance.clearResolutionCaches?.();
         navigatorInstance.documentationCache?.clear();
         navigatorInstance.pendingFetches?.clear();
         navigatorInstance.activeHovers?.clear();

@@ -1,3 +1,13 @@
+v1.3.1
+- Added: Alias-aware template path parsing for references like `/path/to/template.yaml@templates`
+- Added: URI-based workspace file resolution for multi-root workspace navigation reliability
+- Added: Fallback resolution for project template conventions (e.g., `templates/codeway-*.yaml`) when direct links are not provider-visible
+- Added: Detailed debug tracing for file path parsing, candidate probing, alias matching, and fallback decisions
+- Added: Resolver caches for URI existence checks, alias search matches, and convention fallback derivation
+- Improved: Convention/symlink fallback checks now run only when normal direct and workspace resolution paths fail
+- Improved: Cache invalidation on file create/delete/rename events and relevant configuration updates
+- Fixed: Cross-workspace template navigation for WSL/UNC multi-root setups where symlinked paths were not discoverable by direct probes
+
 v1.3.0
 - Breaking: Minimum VS Code version updated to 1.85.0 (November 2023)
 - Added: `filePathKeys` configuration for custom file navigation keywords (e.g., 'systemTestTemplate')
